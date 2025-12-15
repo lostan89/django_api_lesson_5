@@ -1,0 +1,9 @@
+.env
+/__pycache__
+.replit
+.DS_Store
+/.ruff_cache
+/venv
+*.pyc
+*.pyd
+*.pyo
