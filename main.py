@@ -4,80 +4,142 @@ from environs import Env
 from itertools import count
 from terminaltables import AsciiTable
 
+PROFESSIONS = [
+    "python",
+    "java",
+    "javascript",
+    "php",
+    "c++",
+    "css",
+    "c#",
+    "c",
+    "go",
+    "ruby",
+]
 
-def get_vacancy_info_headhunter(profession):
+
+def fetch_hh_vacancies(profession):
     api_url = "https://api.hh.ru/vacancies/?"
-    page_response = []
+    page_response_with_vacancies = []
     for page in count(0):
         payload = {
             "period": 20,
             "text": profession,
             "area": 1,
             "page": page,
-            "per_page": 20,
+            "per_page": 100,
         }
         response = requests.get(api_url, params=payload)
-        response.raise_for_status()
-        page_response.append(response.json())
 
-        if page > page_response[0]["pages"]:
+        response.raise_for_status()
+        vacancies_list = response.json()
+        page_response_with_vacancies.append(vacancies_list)
+
+        if page > page_response_with_vacancies[0]["pages"]:
             break
 
-    return page_response
+    return page_response_with_vacancies
 
 
-def get_vacancy_info_superjob(profession):
-    env = Env()
-    env.read_env()
-    access_token = env.str("SUPERJOB_ACCESS_TOKEN")
-    secret_key = env.str("SUPERJOB_SECRET_KEY")
-    code = env.str("SUPERJOB_CODE")
+def fetch_superjob_vacancies(profession, secret_key):
     api_url = "https://api.superjob.ru/2.0/vacancies/"
-    page_response = []
-    counts = 10
+    page_response_with_vacancies = []
+    vacancies_per_page = 10
+    catalog_vacancies_id = 33
+    vacancies_id = 48
     headers = {
         "Host": "api.superjob.ru",
         "X-Api-App-Id": secret_key,
         "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": f"Bearer {access_token}",
     }
+
     for page in count(0):
         params = {
             "page": page,
-            "count": counts,
+            "count": vacancies_per_page,
             "keyword": profession,
             "town": "Москва",
-            "id_parent": 33,
-            "key": 48,
+            "id_parent": catalog_vacancies_id,
+            "key": vacancies_id,
         }
-
         response = requests.get(api_url, headers=headers, params=params)
         response.raise_for_status()
-        page_response.append(response.json())
+        vacancies_list = response.json()
+        total = vacancies_list["total"]
+        if vacancies_list["objects"]:
+            page_response_with_vacancies.append(vacancies_list["objects"])
 
-        if page > page_response[0]["total"] / counts:
+        if not vacancies_list["more"]:
             break
-    return page_response
+    return page_response_with_vacancies, total
 
 
-def predict_rub_salary_for_HeadHunter(vacancy):
-    if vacancy["currency"] != "RUR":
-        return None
-    if not vacancy["from"]:
-        return vacancy["to"] * 0.8
-    if not vacancy["to"]:
-        return vacancy["from"] * 1.2
-    return (vacancy["from"] + vacancy["to"]) / 2
+def predict_rub_salary(salary_from, salary_to):
+    if not salary_from:
+        return salary_to * 0.8
+    if not salary_to:
+        return salary_from * 1.2
+    return (salary_from + salary_to) / 2
 
 
-def predict_rub_salary_for_superJob(vacancy):
-    if vacancy["currency"] != "rub":
-        return None
-    if not vacancy["payment_from"]:
-        return vacancy["payment_to"] * 0.8
-    if not vacancy["payment_to"]:
-        return vacancy["payment_from"] * 1.2
-    return (vacancy["payment_from"] + vacancy["payment_to"]) / 2
+def get_average_salary_from_superjob(secret_key):
+    salary_info_by_vacancy = {}
+
+    for profession in PROFESSIONS:
+        vacancy_pages, vacancies_found = fetch_superjob_vacancies(
+            profession, secret_key
+        )
+        salary_data = []
+        for vacancy_page in vacancy_pages:
+            for vacancy in vacancy_page:
+                if (vacancy["payment_from"] or vacancy["payment_to"]) and vacancy[
+                    "currency"
+                ] == "rub":
+                    salary = predict_rub_salary(
+                        vacancy["payment_from"], vacancy["payment_to"]
+                    )
+                    salary_data.append(int(salary))
+        if not salary_data:
+            continue
+        vacancies_processed = len(salary_data)
+        average_salary = sum(salary_data) / vacancies_processed
+
+        salary_info_by_vacancy[profession] = {
+            "vacancies_found": vacancies_found,
+            "vacancies_processed": vacancies_processed,
+            "average_salary": int(average_salary),
+        }
+
+    return salary_info_by_vacancy
+
+
+def get_average_salary_from_hh():
+    salary_info_by_vacancy = {}
+
+    for profession in PROFESSIONS:
+        vacancy_pages = fetch_hh_vacancies(profession)
+        vacancies_found = vacancy_pages[0]["found"]
+        salary_data = []
+        for vacancy_page in vacancy_pages:
+            for vacancy in vacancy_page["items"]:
+                if not vacancy["salary"]:
+                    continue
+                if vacancy["salary"]["currency"] == "RUR":
+                    salary = predict_rub_salary(
+                        vacancy["salary"]["from"], vacancy["salary"]["to"]
+                    )
+                    salary_data.append(int(salary))
+        if not salary_data:
+            continue
+        vacancies_processed = len(salary_data)
+        average_salary = sum(salary_data) / vacancies_processed
+        salary_info_by_vacancy[profession] = {
+            "vacancies_found": vacancies_found,
+            "vacancies_processed": vacancies_processed,
+            "average_salary": int(average_salary),
+        }
+
+    return salary_info_by_vacancy
 
 
 def compare_result_to_table(result_list, title):
@@ -97,98 +159,12 @@ def compare_result_to_table(result_list, title):
     return table.table
 
 
-def compare_superjob_vacancies():
-    result_api_request = {}
-    professions = [
-        'программист python',
-        'программист java',
-        'программист javascript',
-        'программист php',
-        'программист c++',
-        'программист css',
-        'программист c#',
-        'программист c',
-        'программист go',
-        'программист ruby',
-    ]
-
-    for profession in professions:
-        vacancy_pages = get_vacancy_info_superjob(profession)
-        vacancies_found = vacancy_pages[0]["total"]
-        vacancies_processed = 0
-        salary_list = []
-        for vacancy_page in vacancy_pages:
-            if not vacancy_page["objects"]:
-                continue
-            for vacancy in vacancy_page["objects"]:
-                salary = predict_rub_salary_for_superJob(vacancy)
-                if (
-                    vacancy["payment_from"] or vacancy["payment_to"]
-                ) and salary != None:
-                    vacancies_processed += 1
-                    salary_list.append(int(salary))
-        if not vacancies_processed:
-            continue
-        average_salary = sum(salary_list) / vacancies_processed
-
-        result_api_request.update(
-            {
-                profession: {
-                    "vacancies_found": vacancies_found,
-                    "vacancies_processed": vacancies_processed,
-                    "average_salary": int(average_salary),
-                }
-            }
-        )
-
-    return result_api_request
-
-
-def compare_hh_vacancies():
-    result_api_request = {}
-    professions = [
-        "программист python",
-        "программист java",
-        "программист javascript",
-        "программист php",
-        "программист c++",
-        "программист css",
-        "программист c#",
-        "программист c",
-        "программист go",
-        "программист ruby",
-    ]
-
-    for profession in professions:
-        vacancy_pages = get_vacancy_info_headhunter(profession)
-        vacancies_found = vacancy_pages[0]["found"]
-        vacancies_processed = 0
-        salary_list = []
-        for vacancy_page in vacancy_pages:
-            for vacancy in vacancy_page["items"]:
-                if not vacancy["salary"]:
-                    continue
-                vacancies_processed += 1
-                salary = predict_rub_salary_for_HeadHunter(vacancy["salary"])
-                if salary:
-                    salary_list.append(int(salary))
-        average_salary = sum(salary_list) / vacancies_processed
-        result_api_request.update(
-            {
-                profession: {
-                    "vacancies_found": vacancies_found,
-                    "vacancies_processed": vacancies_processed,
-                    "average_salary": int(average_salary),
-                }
-            }
-        )
-
-    return result_api_request
-
-
 def main():
-    print(compare_result_to_table(compare_superjob_vacancies(), "SuperJob Moscow"))
-    print(compare_result_to_table(compare_hh_vacancies(),'HeadHunter Moscow'))
+    env = Env()
+    env.read_env()
+    secret_key = env.str("SUPERJOB_SECRET_KEY")
+    print(compare_result_to_table(get_average_salary_from_superjob(secret_key), "SuperJob Moscow"))
+    print(compare_result_to_table(get_average_salary_from_hh(), "HeadHunter Moscow"))
 
 
 if __name__ == "__main__":
