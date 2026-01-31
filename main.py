@@ -20,7 +20,7 @@ PROFESSIONS = [
 
 def fetch_hh_vacancies(profession):
     api_url = "https://api.hh.ru/vacancies/?"
-    page_response_with_vacancies = []
+    collected_vacancies = []
     for page in count(0):
         payload = {
             "period": 20,
@@ -33,17 +33,17 @@ def fetch_hh_vacancies(profession):
 
         response.raise_for_status()
         vacancies = response.json()
-        page_response_with_vacancies.append(vacancies)
+        collected_vacancies.append(vacancies)
 
-        if page > page_response_with_vacancies[0]["pages"]:
+        if page > collected_vacancies[0]["pages"]:
             break
 
-    return page_response_with_vacancies
+    return collected_vacancies
 
 
 def fetch_superjob_vacancies(profession, secret_key):
     api_url = "https://api.superjob.ru/2.0/vacancies/"
-    page_response_with_vacancies = []
+    collected_vacancies = []
     vacancies_per_page = 10
     catalog_vacancies_id = 33
     vacancies_id = 48
@@ -65,13 +65,13 @@ def fetch_superjob_vacancies(profession, secret_key):
         response = requests.get(api_url, headers=headers, params=params)
         response.raise_for_status()
         vacancies = response.json()
-        total = vacancies["total"]
+        total_vacancies = vacancies["total"]
         if vacancies["objects"]:
-            page_response_with_vacancies.append(vacancies["objects"])
+            collected_vacancies.append(vacancies["objects"])
 
         if not vacancies["more"]:
             break
-    return page_response_with_vacancies, total
+    return collected_vacancies, total_vacancies
 
 
 def predict_rub_salary(salary_from, salary_to):
@@ -82,16 +82,16 @@ def predict_rub_salary(salary_from, salary_to):
     return (salary_from + salary_to) / 2
 
 
-def get_superjob_salary_stats()(secret_key):
+def get_superjob_salary_stats(secret_key):
     average_salaries_by_vacancy = {}
 
     for profession in PROFESSIONS:
-        vacancy_pages, vacancies_found = fetch_superjob_vacancies(
+        collected_vacancies, vacancies_found = fetch_superjob_vacancies(
             profession, secret_key
         )
         rub_salaries = []
-        for vacancy_page in vacancy_pages:
-            for vacancy in vacancy_page:
+        for page_of_vacancies in collected_vacancies:
+            for vacancy in page_of_vacancies:
                 if (vacancy["payment_from"] or vacancy["payment_to"]) and vacancy[
                     "currency"
                 ] == "rub":
@@ -117,11 +117,11 @@ def get_hh_salary_stats():
     average_salaries_by_vacancy = {}
 
     for profession in PROFESSIONS:
-        vacancy_pages = fetch_hh_vacancies(profession)
-        vacancies_found = vacancy_pages[0]["found"]
+        collected_vacancies = fetch_hh_vacancies(profession)
+        vacancies_found = collected_vacancies[0]["found"]
         rub_salaries = []
-        for vacancy_page in vacancy_pages:
-            for vacancy in vacancy_page["items"]:
+        for page_of_vacancies in collected_vacancies:
+            for vacancy in page_of_vacancies["items"]:
                 if not vacancy["salary"]:
                     continue
                 if vacancy["salary"]["currency"] == "RUR":
