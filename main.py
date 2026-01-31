@@ -82,14 +82,14 @@ def predict_rub_salary(salary_from, salary_to):
     return (salary_from + salary_to) / 2
 
 
-def get_average_salary_from_superjob(secret_key):
-    salary_info_by_vacancy = {}
+def get_superjob_salary_stats()(secret_key):
+    average_salaries_by_vacancy = {}
 
     for profession in PROFESSIONS:
         vacancy_pages, vacancies_found = fetch_superjob_vacancies(
             profession, secret_key
         )
-        salary_data = []
+        rub_salaries = []
         for vacancy_page in vacancy_pages:
             for vacancy in vacancy_page:
                 if (vacancy["payment_from"] or vacancy["payment_to"]) and vacancy[
@@ -98,28 +98,28 @@ def get_average_salary_from_superjob(secret_key):
                     salary = predict_rub_salary(
                         vacancy["payment_from"], vacancy["payment_to"]
                     )
-                    salary_data.append(int(salary))
-        if not salary_data:
+                    rub_salaries.append(int(salary))
+        if not rub_salaries:
             continue
-        vacancies_processed = len(salary_data)
-        average_salary = sum(salary_data) / vacancies_processed
+        vacancies_processed = len(rub_salaries)
+        average_salary = sum(rub_salaries) / vacancies_processed
 
-        salary_info_by_vacancy[profession] = {
+        average_salaries_by_vacancy[profession] = {
             "vacancies_found": vacancies_found,
             "vacancies_processed": vacancies_processed,
             "average_salary": int(average_salary),
         }
 
-    return salary_info_by_vacancy
+    return average_salaries_by_vacancy
 
 
-def get_average_salary_from_hh():
-    salary_info_by_vacancy = {}
+def get_hh_salary_stats():
+    average_salaries_by_vacancy = {}
 
     for profession in PROFESSIONS:
         vacancy_pages = fetch_hh_vacancies(profession)
         vacancies_found = vacancy_pages[0]["found"]
-        salary_data = []
+        rub_salaries = []
         for vacancy_page in vacancy_pages:
             for vacancy in vacancy_page["items"]:
                 if not vacancy["salary"]:
@@ -128,18 +128,18 @@ def get_average_salary_from_hh():
                     salary = predict_rub_salary(
                         vacancy["salary"]["from"], vacancy["salary"]["to"]
                     )
-                    salary_data.append(int(salary))
-        if not salary_data:
+                    rub_salaries.append(int(salary))
+        if not rub_salaries:
             continue
-        vacancies_processed = len(salary_data)
-        average_salary = sum(salary_data) / vacancies_processed
-        salary_info_by_vacancy[profession] = {
+        vacancies_processed = len(rub_salaries)
+        average_salary = sum(rub_salaries) / vacancies_processed
+        average_salaries_by_vacancy[profession] = {
             "vacancies_found": vacancies_found,
             "vacancies_processed": vacancies_processed,
             "average_salary": int(average_salary),
         }
 
-    return salary_info_by_vacancy
+    return average_salaries_by_vacancy
 
 
 def compare_result_to_table(result_list, title):
@@ -152,9 +152,9 @@ def compare_result_to_table(result_list, title):
         ]
     ]
     for key, value in result_list.items():
-        vacancy_info = [key]
-        vacancy_info.extend(value.values())
-        table_data.append(vacancy_info)
+        average_salaries_by_vacancy = [key]
+        average_salaries_by_vacancy.extend(value.values())
+        table_data.append(average_salaries_by_vacancy)
     table = AsciiTable(table_data, title=title)
     return table.table
 
@@ -163,8 +163,8 @@ def main():
     env = Env()
     env.read_env()
     secret_key = env.str("SUPERJOB_SECRET_KEY")
-    print(compare_result_to_table(get_average_salary_from_superjob(secret_key), "SuperJob Moscow"))
-    print(compare_result_to_table(get_average_salary_from_hh(), "HeadHunter Moscow"))
+    print(compare_result_to_table(get_superjob_salary_stats(secret_key), "SuperJob Moscow"))
+    print(compare_result_to_table(get_hh_salary_stats(), "HeadHunter Moscow"))
 
 
 if __name__ == "__main__":
