@@ -32,8 +32,8 @@ def fetch_hh_vacancies(profession):
         response = requests.get(api_url, params=payload)
 
         response.raise_for_status()
-        vacancies_list = response.json()
-        page_response_with_vacancies.append(vacancies_list)
+        vacancies = response.json()
+        page_response_with_vacancies.append(vacancies)
 
         if page > page_response_with_vacancies[0]["pages"]:
             break
@@ -64,12 +64,12 @@ def fetch_superjob_vacancies(profession, secret_key):
         }
         response = requests.get(api_url, headers=headers, params=params)
         response.raise_for_status()
-        vacancies_list = response.json()
-        total = vacancies_list["total"]
-        if vacancies_list["objects"]:
-            page_response_with_vacancies.append(vacancies_list["objects"])
+        vacancies = response.json()
+        total = vacancies["total"]
+        if vacancies["objects"]:
+            page_response_with_vacancies.append(vacancies["objects"])
 
-        if not vacancies_list["more"]:
+        if not vacancies["more"]:
             break
     return page_response_with_vacancies, total
 
@@ -142,7 +142,7 @@ def get_hh_salary_stats():
     return average_salaries_by_vacancy
 
 
-def compare_result_to_table(result_list, title):
+def compare_result_to_table(result, title):
     table_data = [
         [
             "Язык программирования",
@@ -151,7 +151,7 @@ def compare_result_to_table(result_list, title):
             "Средняя зарплата",
         ]
     ]
-    for key, value in result_list.items():
+    for key, value in result.items():
         average_salaries_by_vacancy = [key]
         average_salaries_by_vacancy.extend(value.values())
         table_data.append(average_salaries_by_vacancy)
