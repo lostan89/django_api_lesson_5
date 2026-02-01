@@ -146,7 +146,7 @@ def get_hh_salary_stats():
     return average_salaries_by_vacancy
 
 
-def compare_result_to_table(result, title):
+def build_salary_table(result, title):
     table_data = [
         [
             "Язык программирования",
@@ -167,8 +167,8 @@ def main():
     env = Env()
     env.read_env()
     secret_key = env.str("SUPERJOB_SECRET_KEY")
-    print(compare_result_to_table(get_superjob_salary_stats(secret_key), "SuperJob Moscow"))
-    print(compare_result_to_table(get_hh_salary_stats(), "HeadHunter Moscow"))
+    print(build_salary_table(get_superjob_salary_stats(secret_key), "SuperJob Moscow"))
+    print(build_salary_table(get_hh_salary_stats(), "HeadHunter Moscow"))
 
 
 if __name__ == "__main__":
