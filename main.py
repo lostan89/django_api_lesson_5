@@ -99,6 +99,11 @@ def get_superjob_salary_stats(secret_key):
                 )
                 rub_salaries.append(int(salary))
         if not rub_salaries:
+            average_salaries_by_vacancy[profession] = {
+            "vacancies_found": vacancies_found,
+            "vacancies_processed": 0,
+            "average_salary": 0,
+        }
             continue
         vacancies_processed = len(rub_salaries)
         average_salary = sum(rub_salaries) / vacancies_processed
