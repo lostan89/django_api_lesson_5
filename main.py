@@ -146,7 +146,7 @@ def get_hh_salary_stats():
     return average_salaries_by_vacancy
 
 
-def build_salary_table(result, title):
+def build_salary_table(aggregated_vacancy_stats, title):
     table_data = [
         [
             "Язык программирования",
@@ -155,10 +155,10 @@ def build_salary_table(result, title):
             "Средняя зарплата",
         ]
     ]
-    for key, value in result.items():
-        average_salaries_by_vacancy = [key]
-        average_salaries_by_vacancy.extend(value.values())
-        table_data.append(average_salaries_by_vacancy)
+    for vacancy_name, vacancy_stats in aggregated_vacancy_stats.items():
+        row = [vacancy_name]
+        row.extend(vacancy_stats.values())
+        table_data.append(row)
     table = AsciiTable(table_data, title=title)
     return table.table
 
