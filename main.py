@@ -67,7 +67,7 @@ def fetch_superjob_vacancies(profession, secret_key):
         vacancies = response.json()
         total_vacancies = vacancies["total"]
         if vacancies["objects"]:
-            collected_vacancies.append(vacancies["objects"])
+            collected_vacancies.extend(vacancies["objects"])
 
         if not vacancies["more"]:
             break
@@ -90,15 +90,14 @@ def get_superjob_salary_stats(secret_key):
             profession, secret_key
         )
         rub_salaries = []
-        for page_of_vacancies in collected_vacancies:
-            for vacancy in page_of_vacancies:
-                if (vacancy["payment_from"] or vacancy["payment_to"]) and vacancy[
-                    "currency"
-                ] == "rub":
-                    salary = predict_rub_salary(
-                        vacancy["payment_from"], vacancy["payment_to"]
-                    )
-                    rub_salaries.append(int(salary))
+        for vacancy in collected_vacancies:
+            if (vacancy["payment_from"] or vacancy["payment_to"]) and vacancy[
+                "currency"
+            ] == "rub":
+                salary = predict_rub_salary(
+                    vacancy["payment_from"], vacancy["payment_to"]
+                )
+                rub_salaries.append(int(salary))
         if not rub_salaries:
             continue
         vacancies_processed = len(rub_salaries)
