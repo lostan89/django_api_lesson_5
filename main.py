@@ -19,7 +19,7 @@ PROFESSIONS = [
 
 
 def fetch_hh_vacancies(profession):
-    api_url = "https://api.hh.ru/vacancies/?"
+    api_url = "https://api.hh.ru/vacancies"
     hh_region_id = 1
     hh_days_since_publication = 20
     collected_vacancies = []
@@ -44,7 +44,7 @@ def fetch_hh_vacancies(profession):
 
 
 def fetch_superjob_vacancies(profession, secret_key):
-    api_url = "https://api.superjob.ru/2.0/vacancies/"
+    api_url = "https://api.superjob.ru/2.0/vacancies"
     collected_vacancies = []
     vacancies_per_page = 10
     catalog_vacancies_id = 33
