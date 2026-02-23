@@ -20,12 +20,14 @@ PROFESSIONS = [
 
 def fetch_hh_vacancies(profession):
     api_url = "https://api.hh.ru/vacancies/?"
+    hh_region_id = 1
+    hh_days_since_publication = 20
     collected_vacancies = []
     for page in count(0):
         payload = {
-            "period": 20,
+            "period": hh_days_since_publication,
             "text": profession,
-            "area": 1,
+            "area": hh_region_id,
             "page": page,
             "per_page": 100,
         }
