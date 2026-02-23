@@ -94,16 +94,11 @@ def get_superjob_salary_stats(secret_key):
             if vacancy['payment_from'] or vacancy['payment_to'] and vacancy['currency'] == 'rub':
                 salary = predict_rub_salary(vacancy['payment_from'], vacancy['payment_to'])
                 rub_salaries.append(int(salary))
-        if not rub_salaries:
-            average_salaries_by_vacancy[profession] = {
-                "vacancies_found": vacancies_found,
-                "vacancies_processed": 0,
-                "average_salary": 0,
-            }
-            continue
         vacancies_processed = len(rub_salaries)
-        average_salary = sum(rub_salaries) / vacancies_processed
-
+        if vacancies_processed > 0:
+            average_salary = sum(rub_salaries) / vacancies_processed
+        else:
+            average_salary = 0
         average_salaries_by_vacancy[profession] = {
             "vacancies_found": vacancies_found,
             "vacancies_processed": vacancies_processed,
@@ -129,10 +124,11 @@ def get_hh_salary_stats():
                         vacancy["salary"]["from"], vacancy["salary"]["to"]
                     )
                     rub_salaries.append(int(salary))
-        if not rub_salaries:
-            continue
         vacancies_processed = len(rub_salaries)
-        average_salary = sum(rub_salaries) / vacancies_processed
+        if vacancies_processed > 0:
+            average_salary = sum(rub_salaries) / vacancies_processed
+        else:
+            average_salary = 0
         average_salaries_by_vacancy[profession] = {
             "vacancies_found": vacancies_found,
             "vacancies_processed": vacancies_processed,
